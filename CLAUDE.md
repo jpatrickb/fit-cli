@@ -22,7 +22,7 @@ personal working notes and is not committed.
 - Log a whole strength session with `fit log -` (document format: `fit log --help`), cardio with
   `fit cardio log -`. One command = one write = one `fit undo`.
 - Corrections to anything older than the last write: `fit set edit` / `fit set delete` for a set,
-  `fit session delete` to remove a session and re-log it.
+  `fit cardio edit` for a run's totals or type, `fit session delete` to remove a session and re-log it.
 - Plans: `fit plan load -` (format: `fit plan load --help`), `fit plan show`, `swap`, `edit`.
   `fit next` builds the gym template; it may swap a maxed exercise in the plan (undoable).
 - Set `FIT_DB` to point at a scratch database when experimenting.

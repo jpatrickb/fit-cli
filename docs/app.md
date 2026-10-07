@@ -91,6 +91,7 @@ structure is the agent's job, which means the app needs no note parser.
 | A41 | Install | **Table changes ship as migrations** (`db.MIGRATIONS`, `PRAGMA user_version`): the affected tables are rebuilt from `schema.sql` on open, after the file is copied to `fit.db.pre-v<N>.bak`. View changes need no migration; they're rebuilt automatically. |
 | A42 | Corrections | Undo only reaches the most recent write, so older data has its own commands: **`fit session delete`** (the whole session and everything in it; its source_ref is freed for re-logging) and **`fit set edit` / `fit set delete`** (one set in place; deleting an exercise's last set removes the exercise and its symptoms). Both are ordinary writes, so undoable right after. |
 | A43 | Corrections | A day with more than one session (lifting and a run) needs `--kind` or `--id`; `fit show` now includes each session's id. |
+| A44 | Corrections | `fit cardio edit` fixes a cardio session's type, activity, distance or moving time in place (`--type none` clears the type). |
 
 ## Progression rules (double progression, per plan slot)
 
@@ -123,7 +124,7 @@ fit log -                                        a whole strength session as one
 fit cardio log -                                 a run or ride, with optional segments
 fit set add · fit skip · fit symptom add · fit measure add     one piece at a time (people)
 fit undo                                         reverse the most recent write
-fit session delete [DATE] · fit set edit|delete <exercise> <set>   correct older sessions
+fit session delete [DATE] · fit set edit|delete <exercise> <set> · fit cardio edit [DATE]   correct older sessions
 
 # reading
 fit show [DATE] [--sets] · fit cardio show [DATE] · fit cardio list

@@ -510,3 +510,13 @@ def test_set_edit_and_delete(fit):
     assert [e["exercise"] for e in shown["exercises"]] == ["Low Pulley Seated Row", "Single-Arm Cable Row"]
     assert shown["exercises"][1]["sets"] == "40×12,L12/R11"
     assert "symptoms" not in shown                                            # its knee symptom went with it
+
+
+def test_cardio_edit(fit):
+    fit("cardio", "log", "-", input="date: 2026-10-06\nactivity: run\ndistance: 4.5\nmoving_time: \"44:00\"\n")
+    fit("cardio", "edit", "2026-10-06", "--type", "long", "--distance", "4.57", "--moving-time", "44:43")
+    shown = fit("cardio", "show", "2026-10-06")["sessions"][0]
+    assert (shown["type"], shown["distance"], shown["pace"]) == ("long", "4.57 mi", "9:47/mi")
+    assert fit.error("cardio", "edit", "2026-10-06", "--type", "lng")["suggestions"][0] == "long"
+    fit("undo")
+    assert fit("cardio", "show", "2026-10-06")["sessions"][0]["type"] is None

@@ -109,3 +109,29 @@ def delete_set(conn: sqlite3.Connection, w: Writer, session: sqlite3.Row, *, exe
             w.delete("symptom", {"id": sym})
         w.delete("session_exercise", {"id": se["id"]})
     return {"exercise": ex["name"], "deleted_set": set_no, "side": row["side"], "exercise_removed": left == 0}
+
+
+def edit_cardio(conn: sqlite3.Connection, w: Writer, session: sqlite3.Row, changes: dict) -> dict:
+    """Fix a cardio session's totals or tags in place: activity, workout type, distance, moving time."""
+    if session["kind"] != "cardio":
+        raise FitError("not_cardio", "that session isn't cardio")
+    if not changes:
+        raise FitError("nothing_to_change", "give at least one change", ["fit cardio edit --help"])
+    from fit.record import DISTANCE_UNITS, parse_duration
+    values: dict = {}
+    if "activity" in changes:
+        values["activity_id"] = resolve.lookup(conn, "cardio_activity", changes["activity"], "activity")
+    if "type" in changes:  # "none" clears it
+        values["workout_type_id"] = None if changes["type"] == "none" else \
+            resolve.lookup(conn, "cardio_workout_type", changes["type"], "workout type")
+    if "distance" in changes:
+        values["distance"] = changes["distance"]
+        current = conn.execute("SELECT distance_unit FROM cardio_detail WHERE session_id = ?", (session["id"],)).fetchone()[0]
+        values["distance_unit"] = _choice(changes.get("unit") or current or "mi", DISTANCE_UNITS, "distance unit")
+    elif "unit" in changes:
+        values["distance_unit"] = _choice(changes["unit"], DISTANCE_UNITS, "distance unit")
+    if "moving_time" in changes:
+        seconds = parse_duration(changes["moving_time"])
+        values["moving_seconds"] = round(seconds) if seconds is not None else None
+    w.update("cardio_detail", {"session_id": session["id"]}, values)
+    return {"session": session["id"], "date": session["date"], "changed": sorted(values)}

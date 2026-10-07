@@ -37,6 +37,9 @@ for sub, name in [(person_app, "person"), (gym_app, "gym"), (equipment_app, "equ
 
 _db_path: Path | None = None
 
+SessionId = Annotated[Optional[str], typer.Option("--id", help="Session id, when a day has more than one (see fit show).")]
+
+
 Person = Annotated[Optional[str], typer.Option("--person", "-p", help="Whose (default: the only person, or $FIT_PERSON).")]
 Day = Annotated[Optional[str], typer.Option("--date", "-d", help="YYYY-MM-DD (default: today).")]
 
@@ -481,6 +484,21 @@ def exercise_age(person: Person = None, on: On = None):
     _run(_read(lambda conn: stats.exercise_age(conn, person, on)))
 
 
+@cardio_app.command("edit")
+def cardio_edit(date: Annotated[Optional[str], typer.Argument(help="YYYY-MM-DD (default: today).")] = None,
+                person: Person = None, session_id: SessionId = None,
+                type: Annotated[Optional[str], typer.Option(help="Workout type, e.g. long, tempo; 'none' clears it.")] = None,
+                activity: Annotated[Optional[str], typer.Option(help="run, mountain_bike...")] = None,
+                distance: Annotated[Optional[float], typer.Option()] = None,
+                unit: Annotated[Optional[str], typer.Option(help="mi, km or m.")] = None,
+                moving_time: Annotated[Optional[str], typer.Option(help="mm:ss or h:mm:ss.")] = None):
+    """Fix a cardio session's type, activity, distance or moving time."""
+    changes = {k: v for k, v in dict(type=type, activity=activity, distance=distance, unit=unit,
+                                     moving_time=moving_time).items() if v is not None}
+    _run(_write("cardio edit", lambda conn, w: corrections.edit_cardio(
+        conn, w, corrections.find_session(conn, person=person, date=date, kind="cardio", session_id=session_id), changes)))
+
+
 @cardio_app.command("list")
 def cardio_list(person: Person = None, since: Since = None):
     """Cardio sessions with distance, time and pace, plus miles per week."""
@@ -622,9 +640,6 @@ def vocab_add(
 
 
 # ── corrections ──────────────────────────────────────────────────────────────
-
-SessionId = Annotated[Optional[str], typer.Option("--id", help="Session id, when a day has more than one (see fit show).")]
-
 
 @session_app.command("delete")
 def session_delete(date: Annotated[Optional[str], typer.Argument(help="YYYY-MM-DD (default: today).")] = None,
