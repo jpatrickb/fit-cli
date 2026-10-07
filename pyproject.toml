@@ -1,0 +1,28 @@
+[project]
+name = "fit"
+version = "0.1.0"
+description = "Workout logging, planning and progress tracking"
+authors = [
+    { name = "jpatrickb", email = "142933271+jpatrickb@users.noreply.github.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "toon-format>=1.1.0",
+    "typer>=0.27.3",
+]
+
+[project.scripts]
+fit = "fit:main"
+
+[build-system]
+requires = ["uv_build>=0.9.8,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"

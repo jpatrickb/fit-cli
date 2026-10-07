@@ -1,0 +1,7 @@
+data/
+.venv/
+__pycache__/
+.DS_Store
+
+# personal working notes (docs/app.md A29)
+CLAUDE.local.md
