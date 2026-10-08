@@ -92,6 +92,7 @@ structure is the agent's job, which means the app needs no note parser.
 | A42 | Corrections | Undo only reaches the most recent write, so older data has its own commands: **`fit session delete`** (the whole session and everything in it; its source_ref is freed for re-logging) and **`fit set edit` / `fit set delete`** (one set in place; deleting an exercise's last set removes the exercise and its symptoms). Both are ordinary writes, so undoable right after. |
 | A43 | Corrections | A day with more than one session (lifting and a run) needs `--kind` or `--id`; `fit show` now includes each session's id. |
 | A44 | Corrections | `fit cardio edit` fixes a cardio session's type, activity, distance or moving time in place (`--type none` clears the type). |
+| A45 | Notes | **`fit next --to-notes --replace` rewrites an existing note in place** (2026-10-07, refining A34). Its current text is archived first (`notes/<title>-replaced[-N].txt` next to the database), so a filled-in note is never lost. Without `--replace`, an existing note is still refused. |
 
 ## Progression rules (double progression, per plan slot)
 
@@ -116,7 +117,7 @@ fit vocab list|add                               grow body parts, symptom kinds,
 
 # plans and templates
 fit plan load|show|swap|edit|add-day|add-slot|drop-slot
-fit next [--person] [--day] [--date] [--to-notes]   template with computed targets; may swap a maxed lift (A7)
+fit next [--person] [--day] [--date] [--to-notes [--replace]]   template; may swap a maxed lift (A7)
 fit notes pull <title> · fit notes list          filled notes back as text (Mac)
 
 # logging (every write is one undoable change set)

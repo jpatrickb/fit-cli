@@ -398,7 +398,9 @@ def plan_drop_slot(day: str, slot: int, person: Person = None, date: Day = None)
 def next_(person: Person = None,
           day: Annotated[Optional[str], typer.Option(help="Plan day (default: the one done longest ago).")] = None,
           date: Day = None,
-          to_notes: Annotated[bool, typer.Option("--to-notes", help="Also create the note in Apple Notes (Gym folder).")] = False):
+          to_notes: Annotated[bool, typer.Option("--to-notes", help="Also create the note in Apple Notes (Gym folder).")] = False,
+          replace: Annotated[bool, typer.Option("--replace", help="With --to-notes: rewrite an existing note of the same "
+                                                              "name (its old text is archived first).")] = False):
     """The gym template for the next session, with computed target weights.
 
     Each exercise gets its target weight and blank reps. If an exercise is maxed at the heaviest
@@ -408,7 +410,7 @@ def next_(person: Person = None,
         result = plan.next_session(conn, lambda: writing(conn, "next", output.actor()),
                                    person=person, day=day, on_text=date)
         if to_notes:
-            result["note"] = notes.push(result["template"])
+            result["note"] = notes.push(result["template"], _archive_dir(), replace=replace)
         if output.mode() == "table":
             return result["template"] + ("" if not result["swapped"] else
                                          "\n\n" + "\n".join(f"swapped: {s['from']} -> {s['to']}" for s in result["swapped"]))

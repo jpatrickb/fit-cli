@@ -1,6 +1,6 @@
 """Apple Notes on the Mac (A8): write gym templates into a Notes folder (they sync to the phone),
 and read filled-in notes back as plain text. Optional and Mac-only; uses AppleScript via osascript.
-Never edits or deletes an existing note."""
+An existing note is only rewritten with --replace, and its old text is archived first."""
 
 import html
 import re
@@ -24,6 +24,20 @@ on run argv
     if (count of (notes of f whose name is theTitle)) > 0 then return "EXISTS"
     set n to make new note at f with properties {body:theBody}
     return id of n
+  end tell
+end run
+"""
+
+_REPLACE = """
+on run argv
+  set theTitle to item 1 of argv
+  set theBody to item 2 of argv
+  set folderName to item 3 of argv
+  tell application "Notes"
+    set found to (notes of folder folderName of default account whose name is theTitle)
+    if (count of found) is not 1 then return "MANY"
+    set body of item 1 of found to theBody
+    return "OK"
   end tell
 end run
 """
@@ -81,20 +95,26 @@ def _html(text: str) -> str:
     return head + "".join(f"<div>{html.escape(line) or '<br>'}</div>" for line in lines[1:])
 
 
-def push(text: str, folder: str = FOLDER) -> dict:
+def push(text: str, archive_dir: Path, folder: str = FOLDER, replace: bool = False) -> dict:
+    """Create the note, or with replace=True rewrite an existing one after archiving its text."""
     title = text.splitlines()[0]
     out = _osascript(_PUSH, title, _html(text), folder)
-    if out == "EXISTS":
-        raise FitError("note_exists", f"a note named {title!r} is already in {folder}; it won't be overwritten",
-                       [f"fit notes pull {title!r}"])
-    return {"note": title, "folder": folder}
+    if out != "EXISTS":
+        return {"note": title, "folder": folder, "replaced": False}
+    if not replace:
+        raise FitError("note_exists", f"a note named {title!r} is already in {folder}",
+                       ["fit next --to-notes --replace (keeps a copy of the old text)", f"fit notes pull {title!r}"])
+    old = pull(title, archive_dir, folder, suffix="-replaced")  # never lose what was typed into it
+    if _osascript(_REPLACE, title, _html(text), folder) != "OK":
+        raise FitError("note_many", f"more than one note named {title!r} in {folder}; fix that in Notes first")
+    return {"note": title, "folder": folder, "replaced": True, "old_text_archived": old["archived"]}
 
 
 def titles(folder: str = FOLDER) -> list[str]:
     return [t for t in _osascript(_LIST, folder).splitlines() if t]
 
 
-def pull(title: str, archive_dir: Path, folder: str = FOLDER) -> dict:
+def pull(title: str, archive_dir: Path, folder: str = FOLDER, suffix: str = "") -> dict:
     out = _osascript(_PULL, title, folder)
     if out in ("NOFOLDER", "MISSING", "MANY"):
         from fit.errors import closest
@@ -103,6 +123,11 @@ def pull(title: str, archive_dir: Path, folder: str = FOLDER) -> dict:
                    "MANY": f"more than one note named {title!r} in {folder}"}
         raise FitError(f"note_{out.lower()}", reasons[out], closest(title, titles(folder)) if out == "MISSING" else [])
     archive_dir.mkdir(parents=True, exist_ok=True)
-    path = archive_dir / (re.sub(r"[^\w]+", "-", title).strip("-").lower() + ".txt")
+    stem = re.sub(r"[^\w]+", "-", title).strip("-").lower() + suffix
+    path = archive_dir / f"{stem}.txt"
+    n = 1
+    while suffix and path.exists():  # keep every replaced version
+        n += 1
+        path = archive_dir / f"{stem}-{n}.txt"
     path.write_text(out + "\n")
     return {"note": title, "archived": str(path), "text": out}
