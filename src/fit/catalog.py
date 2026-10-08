@@ -23,6 +23,7 @@ EQUIPMENT_KINDS = {
     "flat_bench": "none",
     "adjustable_bench": "none",
     "pull_up_bar": "none",
+    "cable_rope": "none",            # rope attachment for a cable station
     "cable_station": "stack",
     "lat_pulldown_station": "stack",
     "chest_press_machine": "stack",
@@ -87,7 +88,12 @@ EXERCISES: dict[str, Exercise] = {
     "lat_raise": _ex("DB Lateral Raise", "shoulder_isolation", "bilateral", 2, {"side_delts": 1},
                      [["dumbbells"]], ["DB Lateral Raises", "Lateral Raise"]),
     "face_pull": _ex("Face Pull", "shoulder_isolation", "bilateral", 1, {"rear_delts": 1, "upper_back": .5},
-                     [["cable_station"]]),
+                     [["cable_station"], ["cable_rope"]]),
+    "rear_delt_fly": _ex("Chest-Supported DB Rear Delt Fly", "shoulder_isolation", "bilateral", 2,
+                         {"rear_delts": 1, "upper_back": .5}, [["dumbbells"], ["adjustable_bench"]],
+                         ["Rear Delt Fly", "Incline Rear Delt Fly", "Chest-Supported Reverse Fly"]),
+    "cable_rear_delt_fly": _ex("Cable Rear Delt Fly", "shoulder_isolation", "unilateral", 1,
+                               {"rear_delts": 1, "upper_back": .5}, [["cable_station"]], ["Cable Reverse Fly"]),
     "pulldown": _ex("Lat Pulldown", "vertical_pull", "bilateral", 1, {"lats": 1, "biceps": .5, "upper_back": .5},
                     [["lat_pulldown_station", "cable_station"]]),
     "lp_row": _ex("Low Pulley Seated Row", "horizontal_pull", "bilateral", 1,
@@ -137,21 +143,45 @@ PROGRESSIONS = [
     ("incline_pushup", "pushup_db", "harder", None),
     ("db_bench", "chest_press", "substitute", None),
     ("goblet_box", "leg_press", "substitute", None),
+    ("face_pull", "rear_delt_fly", "substitute", None),
+    ("face_pull", "cable_rear_delt_fly", "substitute", None),
 ]
 
 
 def load(conn) -> None:
     """Insert the whole catalog into an empty database (part of `fit init`, not undoable)."""
-    conn.executemany("INSERT INTO equipment_kind VALUES (?,?)", EQUIPMENT_KINDS.items())
-    conn.executemany("INSERT INTO muscle VALUES (?,?)", MUSCLES.items())
-    conn.executemany("INSERT INTO body_part VALUES (?,?)", BODY_PARTS.items())
-    conn.executemany("INSERT INTO symptom_kind VALUES (?)", [(k,) for k in SYMPTOM_KINDS])
-    conn.executemany("INSERT INTO measurement_kind VALUES (?,?)", MEASUREMENT_KINDS.items())
-    conn.executemany("INSERT INTO cardio_activity VALUES (?)", [(a,) for a in CARDIO_ACTIVITIES])
-    conn.executemany("INSERT INTO cardio_workout_type VALUES (?)", [(t,) for t in CARDIO_WORKOUT_TYPES])
-    conn.executemany("INSERT INTO progression_rule VALUES (?)", [(r,) for r in PROGRESSION_RULES])
+    sync(conn)
+
+
+def missing(conn) -> bool:
+    """Is anything in this catalog absent from the database? Cheap enough to check on every open."""
+    have = {r[0] for r in conn.execute("SELECT id FROM exercise WHERE origin = 'builtin'")}
+    if any(builtin_id(k) not in have for k in EXERCISES):
+        return True
+    for table, ids in _LOOKUPS.items():
+        present = {r[0] for r in conn.execute(f"SELECT id FROM {table}")}
+        if not set(ids()) <= present:
+            return True
+    pairs = {(r[0], r[1]) for r in conn.execute("SELECT from_exercise_id, to_exercise_id FROM exercise_progression")}
+    return any((builtin_id(a), builtin_id(b)) not in pairs for a, b, _, _ in PROGRESSIONS)
+
+
+def sync(conn) -> None:
+    """Add whatever in the catalog the database doesn't have yet (D21). Only ever adds: an existing
+    built-in a user has edited, or a vocabulary entry, is never touched (D54). Not undoable, like init."""
+    conn.executemany("INSERT OR IGNORE INTO equipment_kind VALUES (?,?)", EQUIPMENT_KINDS.items())
+    conn.executemany("INSERT OR IGNORE INTO muscle VALUES (?,?)", MUSCLES.items())
+    conn.executemany("INSERT OR IGNORE INTO body_part VALUES (?,?)", BODY_PARTS.items())
+    conn.executemany("INSERT OR IGNORE INTO symptom_kind VALUES (?)", [(k,) for k in SYMPTOM_KINDS])
+    conn.executemany("INSERT OR IGNORE INTO measurement_kind VALUES (?,?)", MEASUREMENT_KINDS.items())
+    conn.executemany("INSERT OR IGNORE INTO cardio_activity VALUES (?)", [(a,) for a in CARDIO_ACTIVITIES])
+    conn.executemany("INSERT OR IGNORE INTO cardio_workout_type VALUES (?)", [(t,) for t in CARDIO_WORKOUT_TYPES])
+    conn.executemany("INSERT OR IGNORE INTO progression_rule VALUES (?)", [(r,) for r in PROGRESSION_RULES])
+    existing = {r[0] for r in conn.execute("SELECT id FROM exercise")}
     for key, e in EXERCISES.items():
         eid = builtin_id(key)
+        if eid in existing:
+            continue
         conn.execute(
             "INSERT INTO exercise (id, name, origin, movement_pattern, laterality, measure, "
             "default_implements, bodyweight_fraction) VALUES (?,?,'builtin',?,?,?,?,?)",
@@ -160,8 +190,18 @@ def load(conn) -> None:
                          [(eid, m, c) for m, c in e.muscles.items()])
         conn.executemany("INSERT INTO exercise_equipment VALUES (?,?,?)",
                          [(eid, n, k) for n, kinds in enumerate(e.requires, 1) for k in kinds])
-        conn.executemany("INSERT INTO exercise_alias VALUES (?,?)",
+        conn.executemany("INSERT OR IGNORE INTO exercise_alias VALUES (?,?)",  # a user alias may already own a name
                          [(a, eid) for a in {a.lower(): a for a in (e.name, *e.aliases)}.values()])
+    present = {r[0] for r in conn.execute("SELECT id FROM exercise")}
     conn.executemany(
-        "INSERT INTO exercise_progression (from_exercise_id, to_exercise_id, kind, start_ratio) VALUES (?,?,?,?)",
-        [(builtin_id(a), builtin_id(b), k, r) for a, b, k, r in PROGRESSIONS])
+        "INSERT OR IGNORE INTO exercise_progression (from_exercise_id, to_exercise_id, kind, start_ratio) VALUES (?,?,?,?)",
+        [(builtin_id(a), builtin_id(b), k, r) for a, b, k, r in PROGRESSIONS
+         if builtin_id(a) in present and builtin_id(b) in present])
+
+
+_LOOKUPS = {
+    "equipment_kind": lambda: EQUIPMENT_KINDS, "muscle": lambda: MUSCLES, "body_part": lambda: BODY_PARTS,
+    "symptom_kind": lambda: SYMPTOM_KINDS, "measurement_kind": lambda: MEASUREMENT_KINDS,
+    "cardio_activity": lambda: CARDIO_ACTIVITIES, "cardio_workout_type": lambda: CARDIO_WORKOUT_TYPES,
+    "progression_rule": lambda: PROGRESSION_RULES,
+}

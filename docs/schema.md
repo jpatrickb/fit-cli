@@ -138,6 +138,8 @@ location ── equipment ──► equipment_kind
 | D53 | 2026-10-07 | Plan | **Only exercise swaps create a new slot version**; other edits (sets, reps, tempo) update in place, with old values kept by the change log. |
 | D54 | 2026-10-07 | Exercise | **No defaults on exercise fields**; `bodyweight_fraction` is required (0 = not counted). Built-ins are editable; catalog updates only insert new rows. |
 | D55 | 2026-10-07 | Set | New set kind **`test`**: a one-off heavier try (e.g. 80 × 2 after two sets at 50). Like warmups, ignored by progression, volume and summaries; shown as `80×2(t)`. |
+| D56 | 2026-10-07 | Equipment | **Attachments are equipment kinds** when an exercise depends on one: `cable_rope` (load mechanism `none`). Face pulls need a cable station *and* a rope, so a gym without a rope correctly can't do them. |
+| D57 | 2026-10-07 | Exercise | **Catalog updates reach existing databases on open**: missing built-in exercises, lookup entries and progression links are added. Nothing existing is changed, so a user's edits survive (and a fix to an existing built-in, like face pulls' rope, has to be applied with `fit exercise edit`). Not undoable, like init. |
 
 ## Open questions
 

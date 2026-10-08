@@ -32,6 +32,10 @@ def connect(path: Path) -> sqlite3.Connection:
     _migrate(conn, path)
     conn.execute("PRAGMA foreign_keys = ON")
     _sync_views(conn)
+    if catalog.missing(conn):  # a newer catalog: add what's new (never changes existing rows)
+        conn.execute("BEGIN")
+        catalog.sync(conn)
+        conn.execute("COMMIT")
     return conn
 
 

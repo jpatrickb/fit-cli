@@ -2,7 +2,7 @@ import pytest
 import toon_format
 from typer.testing import CliRunner
 
-from fit import _hoist_global_options, db
+from fit import _hoist_global_options, catalog, db
 from fit.changes import writing
 from fit.cli import app
 from fit.setup import parse_loads
@@ -68,12 +68,13 @@ def fit(tmp_path, monkeypatch):
     f("equipment", "add", "Dumbbells", "--kind", "dumbbells", "--loads", "5-30/5")
     f("equipment", "add", "Cable station", "--kind", "cable_station", "--loads", "10-200/10")
     f("equipment", "add", "Bench", "--kind", "adjustable_bench")
+    f("equipment", "add", "Rope", "--kind", "cable_rope")
     return f
 
 
 def test_init_loads_catalog_and_refuses_twice(fit):
     conn = db.connect(fit.path)
-    assert conn.execute("SELECT COUNT(*) FROM exercise WHERE origin = 'builtin'").fetchone()[0] == 30
+    assert conn.execute("SELECT COUNT(*) FROM exercise WHERE origin = 'builtin'").fetchone()[0] == len(catalog.EXERCISES)
     assert fit.error("init")["error"] == "already_initialized"
 
 
@@ -128,7 +129,7 @@ def test_undo_reverses_latest_write_only_and_allows_relogging(fit):
 
 
 def test_undo_restores_hard_deleted_setup_rows_and_runs_out(fit):
-    for _ in range(5):  # equipment x3, gym, person (init itself is not undoable)
+    for _ in range(6):  # equipment x4, gym, person (init itself is not undoable)
         fit("undo")
     conn = db.connect(fit.path)
     assert conn.execute("SELECT COUNT(*) FROM equipment").fetchone()[0] == 0
@@ -520,3 +521,28 @@ def test_cardio_edit(fit):
     assert fit.error("cardio", "edit", "2026-10-06", "--type", "lng")["suggestions"][0] == "long"
     fit("undo")
     assert fit("cardio", "show", "2026-10-06")["sessions"][0]["type"] is None
+
+
+def test_face_pulls_need_a_rope(fit):
+    fit("exercise", "find", "--muscle", "rear_delts", "--gym", "Home gym")
+    conn = db.connect(fit.path)
+    rope = conn.execute("SELECT id FROM equipment WHERE name = 'Rope'").fetchone()[0]
+    conn.execute("DELETE FROM equipment WHERE id = ?", (rope,))   # a gym without one
+    found = [e["exercise"] for e in fit("exercise", "find", "--muscle", "rear_delts", "--gym", "Home gym")["exercises"]]
+    assert "Face Pull" not in found and "Chest-Supported DB Rear Delt Fly" in found
+
+
+def test_new_catalog_entries_reach_an_existing_database(fit):
+    import sqlite3
+    raw = sqlite3.connect(fit.path)
+    eid = catalog.builtin_id("rear_delt_fly")
+    for t, col in [("exercise_alias", "exercise_id"), ("exercise_muscle", "exercise_id"),
+                   ("exercise_equipment", "exercise_id"), ("exercise_progression", "to_exercise_id")]:
+        raw.execute(f"DELETE FROM {t} WHERE {col} = ?", (eid,))
+    raw.execute("DELETE FROM exercise WHERE id = ?", (eid,))                  # an older catalog
+    raw.execute("UPDATE exercise SET name = 'My Curl' WHERE name = 'DB Curl'")  # a user's edit
+    raw.commit()
+    raw.close()
+    shown = fit("exercise", "show", "Rear Delt Fly")                           # opening adds it back
+    assert shown["exercise"] == "Chest-Supported DB Rear Delt Fly"
+    assert fit("exercise", "show", "DB Curl")["exercise"] == "My Curl"         # edits are never overwritten
