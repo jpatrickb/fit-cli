@@ -552,3 +552,9 @@ def test_bodyweight_sets_use_no_equipment(fit):
     out = fit("log", "-", input="date: 2026-10-07\nexercises[1]:\n  - exercise: DB Reverse Lunge\n"
                                 "    sets[2]{load,reps}:\n      BW,12\n      BW,12\n")
     assert out["exercises"][0]["equipment"] is None and out["exercises"][0]["sets"] == "BW×12,12"
+
+
+def test_bodyweight_history_reads_bw(fit):
+    fit("log", "-", input="date: 2026-10-07\nexercises[1]:\n  - exercise: DB Reverse Lunge\n"
+                          "    sets[1]{load,reps}:\n      BW,12\n")
+    assert fit("history", "DB Reverse Lunge")["sessions"][0]["sets"] == "BW×12"

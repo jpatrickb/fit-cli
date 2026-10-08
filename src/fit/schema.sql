@@ -489,7 +489,8 @@ WITH w AS (
 ),
 by_load AS (    -- "15×10,10" per distinct weight, in the order the weights were first used
     SELECT session_exercise_id, load, MIN(set_no) AS first_set,
-           COALESCE(printf('%g', load), 'BW') || '×' || group_concat(reps, ',' ORDER BY set_no, side) AS part
+           CASE WHEN load IS NULL THEN 'BW' ELSE printf('%g', load) END
+             || '×' || group_concat(reps, ',' ORDER BY set_no, side) AS part
     FROM w GROUP BY session_exercise_id, load
 )
 SELECT
