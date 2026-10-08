@@ -19,7 +19,8 @@ The database lives at `~/.local/share/fit/fit.db` (override with `FIT_DB` or `--
 ```
 fit next --person Sam --to-notes      # today's template into Apple Notes (Mac), weights filled in
   … fill in reps at the gym …
-fit notes pull "Wed Oct 7 · Sam · B"  # the filled note as text, for an agent to turn into:
+fit notes log "Wed Oct 7 · Sam · B"   # plain reps? logged straight from the note
+fit notes pull "Wed Oct 7 · Sam · B"  # anything fancier: the text, for an agent to turn into
 fit log - < session.toon              # one write for the whole session (format: fit log --help)
 fit undo                              # if that was wrong
 fit history "DB RDL" · fit bests · fit muscles · fit capped · fit consistency

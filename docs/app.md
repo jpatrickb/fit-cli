@@ -93,6 +93,7 @@ structure is the agent's job, which means the app needs no note parser.
 | A43 | Corrections | A day with more than one session (lifting and a run) needs `--kind` or `--id`; `fit show` now includes each session's id. |
 | A44 | Corrections | `fit cardio edit` fixes a cardio session's type, activity, distance or moving time in place (`--type none` clears the type). |
 | A45 | Notes | **`fit next --to-notes --replace` rewrites an existing note in place** (2026-10-07, refining A34). Its current text is archived first (`notes/<title>-replaced[-N].txt` next to the database), so a filled-in note is never lost. Without `--replace`, an existing note is still refused. |
+| A46 | Notes | **`fit notes log <title>`** logs a filled-in note in the exact template format: plain reps only (`12 11 10`), blank lines = not done. Anything else is refused with the line named, for an agent to handle. A narrow exception to A4: fit writes this format, so it can read it back without guessing. Source refs are expanded paths, so the same note can't be logged twice. |
 
 ## Progression rules (double progression, per plan slot)
 
@@ -119,6 +120,7 @@ fit vocab list|add                               grow body parts, symptom kinds,
 fit plan load|show|swap|edit|add-day|add-slot|drop-slot
 fit next [--person] [--day] [--date] [--to-notes [--replace]]   template; may swap a maxed lift (A7)
 fit notes pull <title> · fit notes list          filled notes back as text (Mac)
+fit notes log <title> [--file F]                 log a filled template note directly (plain reps only)
 
 # logging (every write is one undoable change set)
 fit log -                                        a whole strength session as one TOON document (agents)

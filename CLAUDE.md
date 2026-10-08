@@ -19,7 +19,8 @@ personal working notes and is not committed.
 - Start with `fit schema`: concepts, conventions, vocabularies and input formats.
 - Output is TOON when not at a terminal. Errors go to stderr as TOON with `error`, `message`,
   `suggestions`, exit code 1. Never guess past an error; use the suggestions or ask.
-- Log a whole strength session with `fit log -` (document format: `fit log --help`), cardio with
+- A gym note with plain reps only: `fit notes log "<title>"`. Otherwise `fit notes pull` it and
+  log the whole strength session with `fit log -` (document format: `fit log --help`), cardio with
   `fit cardio log -`. One command = one write = one `fit undo`.
 - Corrections to anything older than the last write: `fit set edit` / `fit set delete` for a set,
   `fit cardio edit` for a run's totals or type, `fit session delete` to remove a session and re-log it.

@@ -558,3 +558,36 @@ def test_bodyweight_history_reads_bw(fit):
     fit("log", "-", input="date: 2026-10-07\nexercises[1]:\n  - exercise: DB Reverse Lunge\n"
                           "    sets[1]{load,reps}:\n      BW,12\n")
     assert fit("history", "DB Reverse Lunge")["sessions"][0]["sets"] == "BW×12"
+
+
+def test_notes_log_reads_a_filled_template(fit, tmp_path):
+    fit("plan", "load", "-", input=PLAN)
+    template = fit("next", "--date", "2026-10-07")["template"]       # Wed Oct 7 · Me · A
+    lines = template.splitlines()
+    filled = "\n".join([lines[0], lines[1] + " 12 11 10", lines[2] + " 12 12", lines[3]])  # face pull left blank
+    note = tmp_path / "note.txt"
+    note.write_text(filled)
+    out = fit("notes", "log", "--file", str(note), "--started-at", "19:30")
+    assert out["date"] == "2026-10-07" and out["day"] == "A" and out["started_at"] == "19:30"
+    assert [e["sets"] for e in out["exercises"]] == ["20×12,11,10", "25×12,12"]
+    assert out["not_logged_no_reps"] == ["Face Pull"]
+    assert fit.error("notes", "log", "--file", str(note))["error"] == "already_logged"
+
+
+@pytest.mark.parametrize("line", ["DB RDL 20x2: 10+2 10", "DB RDL 20x2: L12 R10", "DB RDL 20x2: skip time",
+                                  "! right knee clicking mild", "DB RDL 20x2: 12 · 25: 10"])
+def test_notes_log_refuses_anything_but_plain_reps(fit, tmp_path, line):
+    fit("plan", "load", "-", input=PLAN)
+    note = tmp_path / "note.txt"
+    note.write_text(f"Wed Oct 7 · Me · A\n{line}\n")
+    assert fit.error("notes", "log", "--file", str(note))["error"] == "needs_an_agent"
+    assert db.connect(fit.path).execute("SELECT COUNT(*) FROM session").fetchone()[0] == 0
+
+
+def test_source_ref_paths_are_expanded_so_duplicates_are_caught(fit):
+    import os
+    doc = "date: 2026-10-07\nsource: import\nsource_ref: ~/notes/a.txt\nexercises[1]:\n  - exercise: DB Curl\n" \
+          "    sets[1]{load,reps}:\n      25,12\n"
+    fit("log", "-", input=doc)
+    same = doc.replace("~/notes/a.txt", os.path.expanduser("~/notes/a.txt"))
+    assert fit.error("log", "-", input=same)["error"] == "already_logged"

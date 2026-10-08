@@ -9,7 +9,7 @@ from typing import Annotated, Optional
 import toon_format
 import typer
 
-from fit import corrections, db, exercises, notes, output, plan, record, resolve, setup, stats, view, vocab
+from fit import corrections, db, exercises, notelog, notes, output, plan, record, resolve, setup, stats, view, vocab
 from fit.changes import undo as undo_last
 from fit.changes import writing
 from fit.errors import FitError
@@ -680,3 +680,34 @@ def set_delete(exercise: str, set_no: int, person: Person = None, date: Day = No
     _run(_write("set delete", lambda conn, w: corrections.delete_set(
         conn, w, corrections.find_session(conn, person=person, date=date, kind="strength", session_id=session_id),
         exercise=exercise, set_no=set_no, side=side)))
+
+
+@notes_app.command("log")
+def notes_log(title: Annotated[Optional[str], typer.Argument(help="The note's title, e.g. 'Wed Oct 7 · Sam · B'.")] = None,
+              file: Annotated[Optional[Path], typer.Option(help="Read the note from a text file instead of Notes.")] = None,
+              date: Annotated[Optional[str], typer.Option(help="Override the date read from the header.")] = None,
+              started_at: Annotated[Optional[str], typer.Option(help="e.g. 19:30 or 7:30pm.")] = None,
+              folder: Annotated[str, typer.Option(help="Notes folder.")] = notes.FOLDER):
+    """Log a filled-in gym note in the exact template format (plain reps only; anything else goes to an agent)."""
+    from datetime import date as Date
+
+    def go():
+        if (title is None) == (file is None):
+            raise FitError("source_required", "give a note title or --file, not both")
+        if file is not None:
+            text, ref = file.read_text(), str(file)
+        else:
+            pulled = notes.pull(title, _archive_dir(), folder)
+            text, ref = pulled["text"], pulled["archived"]
+        doc, blank = notelog.parse(text, Date.today(), date)
+        doc |= {"source": "import", "source_ref": ref}
+        if started_at:
+            doc["started_at"] = started_at
+        conn = _connect()
+        with writing(conn, "notes log", output.actor()) as w:
+            session_id = record.log_strength(conn, w, doc)
+        return view.session(conn, session_id) | ({"not_logged_no_reps": blank} if blank else {})
+    _run(go)
+
+
+notes_log.__doc__ = "Log a filled-in gym note in the exact template format.\n\n" + (notelog.__doc__ or "").strip()

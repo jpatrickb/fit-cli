@@ -33,6 +33,7 @@ unit (mi | km | m), moving_time ("33:00"), source, source_ref, segments[6]{role,
 symptoms[1]{body_part,side,kind,severity}.
 """
 
+import os
 import re
 import sqlite3
 from datetime import date as Date
@@ -168,6 +169,8 @@ def _symptom(conn: sqlite3.Connection, w: Writer, session_id: str, se_id: str | 
 def _source(conn: sqlite3.Connection, doc: dict) -> tuple[str, str | None]:
     source = _choice(doc.get("source", "manual"), SOURCES, "source")
     ref = doc.get("source_ref")
+    if isinstance(ref, str) and ref.startswith("~"):
+        ref = os.path.expanduser(ref)  # one note, one ref, however the path was written
     if ref is not None and conn.execute(
             "SELECT 1 FROM session WHERE source = ? AND source_ref = ? AND deleted_at IS NULL", (source, ref)).fetchone():
         raise FitError("already_logged", f"a session from {source} {ref!r} is already logged", ["fit show", "fit undo"])
