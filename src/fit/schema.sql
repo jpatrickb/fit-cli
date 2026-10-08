@@ -551,10 +551,10 @@ SELECT *,
 FROM best;
 
 -- Exercises whose most recent session was at the equipment's highest load with the top of the
--- rep range reached on every set at that load: double progression has nowhere left to go.
+-- rep range reached on every planned set at that load: double progression has nowhere left to go.
 CREATE VIEW v_capped AS
 WITH latest AS (
-    SELECT es.*, p.rep_max,
+    SELECT es.*, p.rep_max, p.sets AS planned_sets,
            ROW_NUMBER() OVER (PARTITION BY es.person_id, es.exercise_id ORDER BY es.date DESC) AS rn
     FROM v_exercise_session es
     LEFT JOIN prescription p ON p.id = es.prescription_id
@@ -564,7 +564,8 @@ SELECT l.person_id, l.exercise, l.date, l.top_load, l.unit, l.sets_by_load, l.re
 FROM latest l
 WHERE l.rn = 1
   AND l.top_load >= (SELECT MAX(load) FROM equipment_load el WHERE el.equipment_id = l.equipment_id)
-  AND l.min_reps_at_top >= l.rep_max;
+  AND l.min_reps_at_top >= l.rep_max
+  AND l.sets_at_top >= l.planned_sets;
 
 -- Per muscle per ISO week (Mon-Sun): working sets and volume, both weighted by set_credit.
 CREATE VIEW v_weekly_muscle AS

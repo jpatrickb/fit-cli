@@ -287,6 +287,9 @@ def target(conn: sqlite3.Connection, person_id: str, slot: sqlite3.Row, equipmen
     down = next((x for x in reversed(loads) if x < top), None)
     if rule == "none" or (rule == "double" and slot["rep_max"] is None):
         return top, f"{seen}; held", False
+    full = last["sets_at_top"] >= slot["sets"]
+    if rule == "double" and last["min_reps_at_top"] >= slot["rep_max"] and not full:
+        return top, f"{seen}; same weight: top of the range, but {last['sets_at_top']} of {slot['sets']} sets", False
     if rule == "linear" or last["min_reps_at_top"] >= slot["rep_max"]:
         if cap is not None and top >= cap:
             return cap, f"{seen}; at the plan's cap", False

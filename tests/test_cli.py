@@ -465,9 +465,9 @@ def test_migration_from_v1_keeps_data_and_backs_up(fit):
 def test_test_sets_are_ignored_by_progression(fit):
     fit("plan", "load", "-", input=PLAN)
     fit("log", "-", input="date: 2026-10-06\nday: A\nexercises[1]:\n  - exercise: DB RDL\n"
-                          "    sets[3]{load,reps,kind}:\n      20,12,working\n      20,12,working\n      30,2,test\n")
+                          "    sets[4]{load,reps,kind}:\n      20,12,working\n      20,12,working\n      20,12,working\n      30,2,test\n")
     t = fit("next", "--date", "2026-10-08")["targets"][0]
-    assert t["target"] == 25 and "20×12,12" in t["why"]
+    assert t["target"] == 25 and "20×12,12,12" in t["why"]
 
 
 def test_delete_an_older_session_and_relog_it(fit):
@@ -591,3 +591,17 @@ def test_source_ref_paths_are_expanded_so_duplicates_are_caught(fit):
     fit("log", "-", input=doc)
     same = doc.replace("~/notes/a.txt", os.path.expanduser("~/notes/a.txt"))
     assert fit.error("log", "-", input=same)["error"] == "already_logged"
+
+
+def test_a_short_session_holds_the_weight(fit):
+    fit("plan", "load", "-", input=PLAN)                                     # DB RDL: 3 sets of 10-12
+    _rdl_history(fit, "2026-10-06", 20, [12, 12])
+    t = fit("next", "--date", "2026-10-08")["targets"][0]
+    assert t["target"] == 20 and "2 of 3 sets" in t["why"]
+    _rdl_history(fit, "2026-10-08", 30, [12, 12])                            # short day at the top weight
+    assert fit("capped")["capped"] == [] and fit("next", "--date", "2026-10-10")["swapped"] == []
+
+
+def test_overhead_press_progresses_to_arnold_press(fit):
+    shown = fit("exercise", "show", "Standing DB Overhead Press")
+    assert {"direction": "to", "kind": "harder", "exercise": "Seated DB Arnold Press", "start_ratio": 0.83} in shown["progressions"]

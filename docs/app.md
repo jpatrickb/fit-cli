@@ -94,12 +94,14 @@ structure is the agent's job, which means the app needs no note parser.
 | A44 | Corrections | `fit cardio edit` fixes a cardio session's type, activity, distance or moving time in place (`--type none` clears the type). |
 | A45 | Notes | **`fit next --to-notes --replace` rewrites an existing note in place** (2026-10-07, refining A34). Its current text is archived first (`notes/<title>-replaced[-N].txt` next to the database), so a filled-in note is never lost. Without `--replace`, an existing note is still refused. |
 | A46 | Notes | **`fit notes log <title>`** logs a filled-in note in the exact template format: plain reps only (`12 11 10`), blank lines = not done. Anything else is refused with the line named, for an agent to handle. A narrow exception to A4: fit writes this format, so it can read it back without guessing. Source refs are expanded paths, so the same note can't be logged twice. |
+| A47 | Templates | **Weight goes up only after a full session** (2026-10-07): every planned set at the top weight reached the top of the range. A short day holds the weight, and can't make a lift count as capped. |
 
 ## Progression rules (double progression, per plan slot)
 
 | Last session of this exercise | Next template |
 | :-- | :-- |
-| Every set at the top weight reached `rep_max`, heavier weight exists | Next `equipment_load` up |
+| Every **planned** set at the top weight reached `rep_max`, heavier weight exists | Next `equipment_load` up |
+| Top of the range, but fewer sets than planned (a short day) | Same weight |
 | Same, but already at the heaviest weight | Swap to a harder exercise (A7) |
 | The **first** set at the top weight below `rep_min` (later sets falling short is fatigue) | One step down |
 | Otherwise | Same weight |
