@@ -6,3 +6,5 @@ __pycache__/
 # personal working notes (docs/app.md A29)
 CLAUDE.local.md
 .env
+.pytest_cache/
+*.bak

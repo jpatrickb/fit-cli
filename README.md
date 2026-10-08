@@ -1,4 +1,4 @@
-# fit
+# fit-cli
 
 A local CLI for logging workouts and cardio, building gym templates with computed target weights,
 and tracking progress. Built to be driven by an agent: output is TOON when not at a terminal, every
@@ -7,12 +7,16 @@ machine in one SQLite file.
 
 ## Install
 
+Needs Python 3.14 and [uv](https://docs.astral.sh/uv/).
+
 ```
-uv tool install git+<repo url>        # or, from a checkout: uv tool install --editable .
+uv tool install git+https://github.com/jpatrickb/fit-cli   # installs the `fit` command
 fit init                              # database + built-in catalog; asks who's training and sets up a gym
 ```
 
-The database lives at `~/.local/share/fit/fit.db` (override with `FIT_DB` or `--db`).
+The database lives at `~/.local/share/fit/fit.db` (override with `FIT_DB` or `--db`). Set
+`FIT_PERSON` to skip `--person` when one person does most of the logging. The Apple Notes commands
+(`fit next --to-notes`, `fit notes …`) work on macOS only; everything else runs anywhere.
 
 ## A typical day
 
@@ -48,3 +52,7 @@ uv run scripts/seed.py && sqlite3 data/fitness.db < scripts/queries.sql   schema
 (`data/`, `.venv/`) are ignored too.
 
 File names are lowercase-kebab; record every design decision in the matching decision log.
+
+## License
+
+MIT. See `LICENSE`.
