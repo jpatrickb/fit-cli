@@ -257,6 +257,8 @@ def log_strength(conn: sqlite3.Connection, w: Writer, doc: dict) -> str:
             if not item.get("sets"):
                 raise FitError("exercise_needs_sets", f"{ex['name']}: give sets, or skip with a reason")
             equipment = resolve.equipment(conn, ex, gym, item.get("equipment"))
+            if not item.get("equipment") and all(_load(st.get("load")) is None for st in item["sets"]):
+                equipment = None  # body weight only: no equipment was used, whatever the exercise usually takes
             position += 1
             se = w.insert("session_exercise", {"session_id": session["id"], "position": position,
                                                "exercise_id": ex["id"], "prescription_id": rx,

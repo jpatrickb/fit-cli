@@ -546,3 +546,9 @@ def test_new_catalog_entries_reach_an_existing_database(fit):
     shown = fit("exercise", "show", "Rear Delt Fly")                           # opening adds it back
     assert shown["exercise"] == "Chest-Supported DB Rear Delt Fly"
     assert fit("exercise", "show", "DB Curl")["exercise"] == "My Curl"         # edits are never overwritten
+
+
+def test_bodyweight_sets_use_no_equipment(fit):
+    out = fit("log", "-", input="date: 2026-10-07\nexercises[1]:\n  - exercise: DB Reverse Lunge\n"
+                                "    sets[2]{load,reps}:\n      BW,12\n      BW,12\n")
+    assert out["exercises"][0]["equipment"] is None and out["exercises"][0]["sets"] == "BW×12,12"
